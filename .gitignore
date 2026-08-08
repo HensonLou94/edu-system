@@ -43,3 +43,5 @@ Thumbs.db
 *.pid
 *.seed
 *.pid.lock
+"backend/*.db"  
+"backend/*.db-*"  
