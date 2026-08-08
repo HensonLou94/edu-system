@@ -65,21 +65,28 @@ router.post('/', auth, async (req, res) => {
     const studentNo = await generateStudentNo();
     const studentId = await insert(
       `INSERT INTO students (student_no, name, gender, birthday, phone, parent_name, parent_phone, address, grade, school, enrollment_date, notes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, date('now'), ?)`,
       [studentNo, name, gender || 'male', birthday, phone, parent_name, parent_phone, address, grade, school, notes]
     );
     res.json({ message: '学员创建成功', studentId, studentNo });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// 更新学员
+// 更新学员（部分更新）
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { name, gender, birthday, phone, parent_name, parent_phone, address, grade, school, status, notes } = req.body;
-    await update(
-      `UPDATE students SET name=?, gender=?, birthday=?, phone=?, parent_name=?, parent_phone=?, address=?, grade=?, school=?, status=?, notes=? WHERE id=?`,
-      [name, gender, birthday, phone, parent_name, parent_phone, address, grade, school, status, notes, req.params.id]
-    );
+    const fields = ['name', 'gender', 'birthday', 'phone', 'parent_name', 'parent_phone', 'address', 'grade', 'school', 'status', 'notes'];
+    const updates = [];
+    const params = [];
+    for (const field of fields) {
+      if (req.body[field] !== undefined) {
+        updates.push(`${field} = ?`);
+        params.push(req.body[field]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: '没有需要更新的字段' });
+    params.push(req.params.id);
+    await update(`UPDATE students SET ${updates.join(', ')} WHERE id = ?`, params);
     res.json({ message: '更新成功' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });

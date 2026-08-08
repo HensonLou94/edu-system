@@ -31,7 +31,7 @@ router.get('/', auth, async (req, res) => {
 // 获取所有教师（下拉选择用）
 router.get('/all', auth, async (req, res) => {
   try {
-    const teachers = await query('SELECT id, name, subjects, specialty FROM teachers WHERE status = "active" ORDER BY name');
+    const teachers = await query("SELECT id, name, subjects, specialty FROM teachers WHERE status = 'active' ORDER BY name");
     res.json(teachers);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -40,24 +40,31 @@ router.get('/all', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     if (!['admin', 'frontdesk'].includes(req.user.role)) return res.status(403).json({ error: '权限不足' });
-    const { name, phone, subjects, specialty, hourly_rate, user_id } = req.body;
+    const { name, phone, subject, subjects, specialty, hourly_rate, user_id } = req.body;
     if (!name) return res.status(400).json({ error: '请填写教师姓名' });
     const teacherId = await insert(
       'INSERT INTO teachers (user_id, name, phone, subjects, specialty, hourly_rate) VALUES (?, ?, ?, ?, ?, ?)',
-      [user_id || null, name, phone, subjects, specialty, hourly_rate || 0]
+      [user_id || null, name, phone, subjects || subject, specialty, hourly_rate || 0]
     );
     res.json({ message: '教师添加成功', teacherId });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// 更新教师
+// 更新教师（部分更新）
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { name, phone, subjects, specialty, hourly_rate, status } = req.body;
-    await update(
-      'UPDATE teachers SET name=?, phone=?, subjects=?, specialty=?, hourly_rate=?, status=? WHERE id=?',
-      [name, phone, subjects, specialty, hourly_rate, status, req.params.id]
-    );
+    const fields = ['name', 'phone', 'subjects', 'specialty', 'hourly_rate', 'status'];
+    const updates = [];
+    const params = [];
+    for (const field of fields) {
+      if (req.body[field] !== undefined) {
+        updates.push(`${field} = ?`);
+        params.push(req.body[field]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: '没有需要更新的字段' });
+    params.push(req.params.id);
+    await update(`UPDATE teachers SET ${updates.join(', ')} WHERE id = ?`, params);
     res.json({ message: '更新成功' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });

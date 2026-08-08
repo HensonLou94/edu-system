@@ -15,20 +15,20 @@ function auth(req, res, next) {
 // 仪表盘概览数据
 router.get('/dashboard', auth, async (req, res) => {
   try {
-    const totalStudents = await queryOne('SELECT COUNT(*) as count FROM students WHERE status = "active"');
-    const totalTeachers = await queryOne('SELECT COUNT(*) as count FROM teachers WHERE status = "active"');
-    const totalCourses = await queryOne('SELECT COUNT(*) as count FROM courses WHERE status = "active"');
+    const totalStudents = await queryOne("SELECT COUNT(*) as count FROM students WHERE status = 'active'");
+    const totalTeachers = await queryOne("SELECT COUNT(*) as count FROM teachers WHERE status = 'active'");
+    const totalCourses = await queryOne("SELECT COUNT(*) as count FROM courses WHERE status = 'active'");
     const todayAttendance = await queryOne(
-      `SELECT COUNT(*) as count FROM attendance WHERE class_date = CURDATE() AND status IN ('present', 'late')`
+      "SELECT COUNT(*) as count FROM attendance WHERE class_date = date('now') AND status IN ('present', 'late')"
     );
     const totalRevenue = await queryOne(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status = "paid" AND YEAR(payment_date) = YEAR(CURDATE())'
+      "SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'paid' AND strftime('%Y', payment_date) = strftime('%Y', 'now')"
     );
     const monthRevenue = await queryOne(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status = "paid" AND MONTH(payment_date) = MONTH(CURDATE()) AND YEAR(payment_date) = YEAR(CURDATE())'
+      "SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'paid' AND strftime('%m', payment_date) = strftime('%m', 'now') AND strftime('%Y', payment_date) = strftime('%Y', 'now')"
     );
     const pendingPayments = await queryOne(
-      `SELECT COUNT(DISTINCT student_id) as count FROM enrollments e 
+      `SELECT COUNT(DISTINCT e.student_id) as count FROM enrollments e 
        LEFT JOIN payments p ON e.student_id = p.student_id AND p.status = 'paid'
        WHERE e.status = 'active' AND p.id IS NULL`
     );
@@ -47,11 +47,11 @@ router.get('/dashboard', auth, async (req, res) => {
 // 月度收入报表
 router.get('/revenue', auth, async (req, res) => {
   try {
-    const { year = new Date().getFullYear() } = req.query;
+    const year = String(req.query.year || new Date().getFullYear());
     const monthlyRevenue = await query(
-      `SELECT MONTH(payment_date) as month, SUM(amount) as amount, COUNT(*) as count
-       FROM payments WHERE status = 'paid' AND YEAR(payment_date) = ?
-       GROUP BY MONTH(payment_date) ORDER BY month`,
+      `SELECT CAST(strftime('%m', payment_date) AS INTEGER) as month, SUM(amount) as amount, COUNT(*) as count
+       FROM payments WHERE status = 'paid' AND strftime('%Y', payment_date) = ?
+       GROUP BY strftime('%m', payment_date) ORDER BY month`,
       [year]
     );
     res.json(monthlyRevenue);
@@ -62,15 +62,15 @@ router.get('/revenue', auth, async (req, res) => {
 router.get('/students', auth, async (req, res) => {
   try {
     const byGrade = await query(
-      'SELECT grade, COUNT(*) as count FROM students WHERE status = "active" GROUP BY grade ORDER BY count DESC'
+      "SELECT grade, COUNT(*) as count FROM students WHERE status = 'active' GROUP BY grade ORDER BY count DESC"
     );
     const byGender = await query(
-      'SELECT gender, COUNT(*) as count FROM students WHERE status = "active" GROUP BY gender'
+      "SELECT gender, COUNT(*) as count FROM students WHERE status = 'active' GROUP BY gender"
     );
     const monthlyEnrollment = await query(
-      `SELECT MONTH(enrollment_date) as month, COUNT(*) as count 
-       FROM students WHERE YEAR(enrollment_date) = YEAR(CURDATE()) 
-       GROUP BY MONTH(enrollment_date) ORDER BY month`
+      `SELECT CAST(strftime('%m', enrollment_date) AS INTEGER) as month, COUNT(*) as count 
+       FROM students WHERE strftime('%Y', enrollment_date) = strftime('%Y', 'now')
+       GROUP BY strftime('%m', enrollment_date) ORDER BY month`
     );
     res.json({ byGrade, byGender, monthlyEnrollment });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -99,7 +99,7 @@ router.get('/teachers', auth, async (req, res) => {
     const teacherHours = await query(
       `SELECT t.name, t.subjects, 
         (SELECT COUNT(*) FROM attendance a JOIN schedules s ON a.schedule_id = s.id WHERE s.teacher_id = t.id AND a.status IN ('present', 'late')) as total_hours,
-        (SELECT COALESCE(SUM(amount), 0) FROM payments p JOIN courses c ON p.course_id = c.id JOIN schedules s ON s.course_id = c.id WHERE s.teacher_id = t.id AND p.status = 'paid') as total_payment
+        (SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.course_id IN (SELECT DISTINCT s2.course_id FROM schedules s2 WHERE s2.teacher_id = t.id) AND p.status = 'paid') as total_payment
        FROM teachers t WHERE t.status = 'active' ORDER BY total_hours DESC`
     );
     res.json(teacherHours);

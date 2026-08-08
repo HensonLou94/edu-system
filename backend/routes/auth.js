@@ -35,7 +35,7 @@ router.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ error: '请填写邮箱和密码' });
     }
-    const user = await queryOne('SELECT * FROM users WHERE email = ? AND status = "active"', [email]);
+    const user = await queryOne("SELECT * FROM users WHERE email = ? AND status = 'active'", [email]);
     if (!user) {
       return res.status(401).json({ error: '用户不存在或已禁用' });
     }

@@ -32,7 +32,7 @@ router.get('/', auth, async (req, res) => {
 // 获取所有课程（下拉选择用）
 router.get('/all', auth, async (req, res) => {
   try {
-    const courses = await query('SELECT id, name, subject, grade_level, price FROM courses WHERE status = "active" ORDER BY name');
+    const courses = await query("SELECT id, name, subject, grade_level, price FROM courses WHERE status = 'active' ORDER BY name");
     res.json(courses);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -51,14 +51,21 @@ router.post('/', auth, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// 更新课程
+// 更新课程（部分更新）
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { name, subject, grade_level, description, total_hours, price, status } = req.body;
-    await update(
-      'UPDATE courses SET name=?, subject=?, grade_level=?, description=?, total_hours=?, price=?, status=? WHERE id=?',
-      [name, subject, grade_level, description, total_hours, price, status, req.params.id]
-    );
+    const fields = ['name', 'subject', 'grade_level', 'description', 'total_hours', 'price', 'status'];
+    const updates = [];
+    const params = [];
+    for (const field of fields) {
+      if (req.body[field] !== undefined) {
+        updates.push(`${field} = ?`);
+        params.push(req.body[field]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: '没有需要更新的字段' });
+    params.push(req.params.id);
+    await update(`UPDATE courses SET ${updates.join(', ')} WHERE id = ?`, params);
     res.json({ message: '更新成功' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });

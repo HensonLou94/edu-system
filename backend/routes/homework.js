@@ -48,13 +48,13 @@ router.get('/teacher/:teacherId', auth, async (req, res) => {
 // 创建作业
 router.post('/', auth, async (req, res) => {
   try {
-    const { teacher_id, course_id, title, content, due_date } = req.body;
+    const { teacher_id, course_id, title, content, due_date, deadline } = req.body;
     if (!teacher_id || !course_id || !title) {
       return res.status(400).json({ error: '请填写必要信息' });
     }
     const homeworkId = await insert(
       'INSERT INTO homework (teacher_id, course_id, title, content, due_date) VALUES (?, ?, ?, ?, ?)',
-      [teacher_id, course_id, title, content, due_date]
+      [teacher_id, course_id, title, content, due_date || deadline]
     );
     res.json({ message: '作业发布成功', homeworkId });
   } catch (error) { res.status(500).json({ error: error.message }); }

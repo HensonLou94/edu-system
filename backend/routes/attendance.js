@@ -55,12 +55,22 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ error: '请填写完整签到信息' });
     }
     for (const record of records) {
-      await insert(
-        `INSERT INTO attendance (schedule_id, student_id, class_date, check_in_time, status, notes) 
-         VALUES (?, ?, ?, NOW(), ?, ?)
-         ON DUPLICATE KEY UPDATE status = VALUES(status), check_in_time = NOW(), notes = VALUES(notes)`,
-        [schedule_id, record.student_id, class_date, record.status || 'present', record.notes || null]
+      // 先检查是否已存在
+      const existing = await queryOne(
+        'SELECT id FROM attendance WHERE schedule_id = ? AND student_id = ? AND class_date = ?',
+        [schedule_id, record.student_id, class_date]
       );
+      if (existing) {
+        await update(
+          "UPDATE attendance SET status = ?, check_in_time = datetime('now'), notes = ? WHERE id = ?",
+          [record.status || 'present', record.notes || null, existing.id]
+        );
+      } else {
+        await insert(
+          "INSERT INTO attendance (schedule_id, student_id, class_date, check_in_time, status, notes) VALUES (?, ?, ?, datetime('now'), ?, ?)",
+          [schedule_id, record.student_id, class_date, record.status || 'present', record.notes || null]
+        );
+      }
     }
     // 更新课消
     if (records.some(r => r.status === 'present' || r.status === 'late')) {
@@ -69,7 +79,7 @@ router.post('/', auth, async (req, res) => {
         for (const record of records) {
           if (record.status === 'present' || record.status === 'late') {
             await update(
-              'UPDATE enrollments SET used_hours = used_hours + 1 WHERE student_id = ? AND course_id = ? AND status = "active"',
+              "UPDATE enrollments SET used_hours = used_hours + 1 WHERE student_id = ? AND course_id = ? AND status = 'active'",
               [record.student_id, schedule.course_id]
             );
           }
