@@ -65,7 +65,7 @@ router.post('/', auth, async (req, res) => {
     const studentNo = await generateStudentNo();
     const studentId = await insert(
       `INSERT INTO students (student_no, name, gender, birthday, phone, parent_name, parent_phone, address, grade, school, enrollment_date, notes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, date('now'), ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?)`,
       [studentNo, name, gender || 'male', birthday, phone, parent_name, parent_phone, address, grade, school, notes]
     );
     res.json({ message: '学员创建成功', studentId, studentNo });

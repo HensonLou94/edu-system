@@ -31,7 +31,7 @@ router.get('/', auth, async (req, res) => {
 // 获取所有教师（下拉选择用）
 router.get('/all', auth, async (req, res) => {
   try {
-    const teachers = await query("SELECT id, name, subjects, specialty FROM teachers WHERE status = 'active' ORDER BY name");
+    const teachers = await query('SELECT id, name, subjects, specialty FROM teachers WHERE status = "active" ORDER BY name');
     res.json(teachers);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });

@@ -49,7 +49,7 @@ router.get('/', auth, async (req, res) => {
 router.get('/summary', auth, async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    let where = "WHERE status = 'paid'";
+    let where = 'WHERE status = "paid"';
     const params = [];
     if (start_date) { where += ' AND payment_date >= ?'; params.push(start_date); }
     if (end_date) { where += ' AND payment_date <= ?'; params.push(end_date); }
@@ -91,12 +91,12 @@ router.put('/:id/refund', auth, async (req, res) => {
     const payment = await queryOne('SELECT * FROM payments WHERE id = ?', [req.params.id]);
     if (!payment) return res.status(404).json({ error: '记录不存在' });
     if (payment.status === 'refunded') return res.status(400).json({ error: '已退款' });
-    await update("UPDATE payments SET status = 'refunded' WHERE id = ?", [req.params.id]);
+    await update('UPDATE payments SET status = "refunded" WHERE id = ?', [req.params.id]);
     // 创建退款记录
     const refundNo = await generateReceiptNo();
     await insert(
       `INSERT INTO payments (receipt_no, student_id, course_id, amount, payment_method, payment_type, payment_date, notes, operator_id, status) 
-       VALUES (?, ?, ?, ?, ?, 'refund', date('now'), ?, ?, 'paid')`,
+       VALUES (?, ?, ?, ?, ?, 'refund', CURDATE(), ?, ?, 'paid')`,
       [refundNo, payment.student_id, payment.course_id, -payment.amount, payment.payment_method, `退款原收据:${payment.receipt_no}`, req.user.id]
     );
     res.json({ message: '退款成功' });

@@ -32,7 +32,7 @@ router.get('/', auth, async (req, res) => {
 // 获取所有课程（下拉选择用）
 router.get('/all', auth, async (req, res) => {
   try {
-    const courses = await query("SELECT id, name, subject, grade_level, price FROM courses WHERE status = 'active' ORDER BY name");
+    const courses = await query('SELECT id, name, subject, grade_level, price FROM courses WHERE status = "active" ORDER BY name');
     res.json(courses);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
