@@ -13,9 +13,9 @@
 
 ## 🛠️ 技术栈
 
-- **前端**：React 18 + TailwindCSS + React Router
-- **后端**：Node.js + Express + JWT
-- **数据库**：SQLite3（可切换 MySQL/PostgreSQL）
+- **前端**：React 18 + Axios + React Router
+- **后端**：Node.js + Express + JWT + MySQL2
+- **数据库**：MySQL 5.7+ / MariaDB 10.3+
 - **部署**：Nginx + PM2
 
 ## 📁 项目结构
@@ -47,21 +47,31 @@ edu-system/
 
 - Node.js >= 16.0.0
 - npm >= 8.0.0
+- MySQL >= 5.7
 
 ### 安装与运行
 
 ```bash
-# 克隆项目
+# 1. 克隆项目
 git clone https://github.com/your-username/edu-system.git
 cd edu-system
 
-# 启动后端
+# 2. 创建MySQL数据库
+mysql -u root -p
+CREATE DATABASE edu_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+exit
+
+# 3. 配置环境变量
 cd backend
+cp .env.example .env
+# 编辑 .env 文件，填写数据库密码
+
+# 4. 启动后端
 npm install
 node server.js
 
-# 启动前端（新终端）
-cd frontend
+# 5. 启动前端（新终端）
+cd ../frontend
 npm install
 npm start
 ```
@@ -80,21 +90,39 @@ npm start
 curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
 sudo yum install -y nodejs
 
-# 2. 安装 PM2
+# 2. 安装 MySQL
+sudo yum install -y mysql-server
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+# 3. 配置MySQL
+sudo mysql -u root
+CREATE DATABASE edu_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'edu_user'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON edu_system.* TO 'edu_user'@'localhost';
+FLUSH PRIVILEGES;
+exit
+
+# 4. 安装 PM2
 sudo npm install -g pm2
 
-# 3. 克隆项目
+# 5. 克隆项目
 git clone https://github.com/your-username/edu-system.git
 cd edu-system
 
-# 4. 安装依赖并构建前端
-cd frontend && npm install && npm run build
+# 6. 配置环境变量
+cd backend
+cp .env.example .env
+vim .env  # 填写数据库信息
+
+# 7. 安装依赖并构建前端
+cd ../frontend && npm install && npm run build
 cd ../backend && npm install
 
-# 5. 启动后端
+# 8. 启动后端
 pm2 start server.js --name edu-api
 
-# 6. 配置 Nginx
+# 9. 配置 Nginx
 sudo vim /etc/nginx/conf.d/edu.conf
 ```
 
