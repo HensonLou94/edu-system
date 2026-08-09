@@ -59,9 +59,7 @@ cd edu-system
 # 2. 配置环境变量
 cd backend
 cp .env.example .env
-# 编辑 .env 文件：
-# - DB_TYPE=sqlite （本地测试，无需数据库）
-# - DB_TYPE=mariadb （生产环境，需要MariaDB）
+# 编辑 .env 文件，填写数据库连接信息
 
 # 3. 启动后端
 npm install

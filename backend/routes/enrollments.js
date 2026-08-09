@@ -38,7 +38,7 @@ router.post('/', auth, async (req, res) => {
     const existing = await queryOne('SELECT id FROM enrollments WHERE student_id = ? AND course_id = ? AND status = ?', [student_id, course_id, 'active']);
     if (existing) return res.status(400).json({ error: '该学员已报名此课程' });
     const enrollmentId = await insert(
-      "INSERT INTO enrollments (student_id, course_id, enrollment_date, total_hours) VALUES (?, ?, date('now'), ?)",
+      "INSERT INTO enrollments (student_id, course_id, enrollment_date, total_hours) VALUES (?, ?, CURDATE(), ?)",
       [student_id, course_id, total_hours || 0]
     );
     res.json({ message: '报名成功', enrollmentId });
