@@ -8,7 +8,9 @@ const dbConfig = {
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'edu_system',
   charset: 'utf8mb4',
-  connectionLimit: 10
+  connectionLimit: 10,
+  supportBigNumbers: false,
+  bigNumberStrings: false
 };
 
 let pool;
