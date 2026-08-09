@@ -83,47 +83,60 @@ npm start
 
 ## 📦 部署
 
-### 云服务器部署（CentOS 9）
+### 云服务器部署（Ubuntu 22.04）
 
 ```bash
-# 1. 安装 Node.js
-curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
-sudo yum install -y nodejs
+# 1. 更新系统并安装 Node.js
+sudo apt update && sudo apt upgrade -y
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
 
 # 2. 安装 MySQL
-sudo yum install -y mysql-server
-sudo systemctl start mysqld
-sudo systemctl enable mysqld
+sudo apt install -y mysql-server
+sudo systemctl start mysql
+sudo systemctl enable mysql
 
-# 3. 配置MySQL
-sudo mysql -u root
+# 3. 配置 MySQL
+sudo mysql -u root -e "
 CREATE DATABASE edu_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'edu_user'@'localhost' IDENTIFIED BY 'your_password';
 GRANT ALL PRIVILEGES ON edu_system.* TO 'edu_user'@'localhost';
 FLUSH PRIVILEGES;
-exit
+"
 
 # 4. 安装 PM2
 sudo npm install -g pm2
 
 # 5. 克隆项目
-git clone https://github.com/HensonLou94/edu-system.git
+cd /opt
+sudo git clone https://github.com/HensonLou94/edu-system.git
 cd edu-system
 
 # 6. 配置环境变量
 cd backend
-cp .env.example .env
-vim .env  # 填写数据库信息
+sudo cp .env.example .env
+sudo vim .env  # 填写数据库信息
 
-# 7. 安装依赖并构建前端
-cd ../frontend && npm install && npm run build
-cd ../backend && npm install
+# 7. 安装依赖并启动
+sudo npm install
+sudo pm2 start server.js --name edu-api
+sudo pm2 save && sudo pm2 startup
 
-# 8. 启动后端
-pm2 start server.js --name edu-api
+# 8. 构建前端
+cd ../frontend
+sudo npm install && sudo npm run build
 
-# 9. 配置 Nginx
-sudo vim /etc/nginx/conf.d/edu.conf
+# 9. 安装并配置 Nginx
+sudo apt install -y nginx
+sudo vim /etc/nginx/sites-available/edu
+sudo ln -s /etc/nginx/sites-available/edu /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl restart nginx
+
+# 10. 开放防火墙
+sudo ufw allow 'Nginx Full'
+sudo ufw allow 22
+sudo ufw enable
 ```
 
 ### Nginx 配置示例
