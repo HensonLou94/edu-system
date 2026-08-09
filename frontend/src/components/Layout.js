@@ -162,7 +162,7 @@ export default function Layout() {
     : allMenuItems;
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('edu_token');
     localStorage.removeItem('user');
     navigate('/login');
   };

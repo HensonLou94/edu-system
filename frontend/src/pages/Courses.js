@@ -57,7 +57,7 @@ export default function Courses() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('edu_token');
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchList = useCallback(async () => {

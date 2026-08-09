@@ -69,7 +69,7 @@ export default function Payments() {
   const [courses, setCourses] = useState([]);
   const [form, setForm] = useState({ studentId: '', courseId: '', amount: '', method: 'wechat', remark: '', date: new Date().toISOString().split('T')[0] });
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('edu_token');
   const headers = { Authorization: `Bearer ${token}` };
 
   // Load students & courses for form

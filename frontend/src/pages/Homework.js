@@ -57,7 +57,7 @@ export default function Homework() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ courseId: '', title: '', content: '', deadline: '' });
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('edu_token');
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {

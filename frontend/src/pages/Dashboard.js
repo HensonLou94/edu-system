@@ -129,7 +129,7 @@ export default function Dashboard() {
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('edu_token');
       const res = await axios.get(`${API_URL}/api/reports/dashboard`, {
         headers: { Authorization: `Bearer ${token}` },
       });

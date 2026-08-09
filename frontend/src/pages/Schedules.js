@@ -53,7 +53,7 @@ export default function Schedules() {
   const [form, setForm] = useState({ courseId: '', teacherId: '', weekday: '1', timeSlot: '', classroom: '' });
   const [saving, setSaving] = useState(false);
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('edu_token');
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchAll = useCallback(async () => {

@@ -51,7 +51,7 @@ export default function Attendance() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('edu_token');
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {

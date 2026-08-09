@@ -43,7 +43,7 @@ export default function Reports() {
   const [courseStats, setCourseStats] = useState([]);
   const [teacherStats, setTeacherStats] = useState([]);
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('edu_token');
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
