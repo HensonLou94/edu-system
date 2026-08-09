@@ -122,7 +122,7 @@ export default function Login() {
     try {
       const res = await axios.post(`${API_URL}/api/auth/login`, { email, password });
       const { token, user } = res.data;
-      localStorage.setItem('token', token);
+      localStorage.setItem('edu_token', token);
       localStorage.setItem('user', JSON.stringify(user));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       navigate('/');
