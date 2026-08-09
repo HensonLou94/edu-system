@@ -210,8 +210,8 @@ export default function Students() {
               <div style={styles.formGroup}>
                 <label style={styles.label}>性别</label>
                 <select style={styles.select} value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
-                  <option value="男">男</option>
-                  <option value="女">女</option>
+                  <option value="male">男</option>
+                  <option value="female">女</option>
                 </select>
               </div>
               <div style={styles.formGroup}>
