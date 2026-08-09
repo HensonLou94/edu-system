@@ -14,8 +14,8 @@
 ## 🛠️ 技术栈
 
 - **前端**：React 18 + Axios + React Router
-- **后端**：Node.js + Express + JWT + MySQL2
-- **数据库**：MySQL 5.7+ / MariaDB 10.3+
+- **后端**：Node.js + Express + JWT + MariaDB
+- **数据库**：MariaDB 10.5+
 - **部署**：Nginx + PM2
 
 ## 📁 项目结构
@@ -47,7 +47,7 @@ edu-system/
 
 - Node.js >= 16.0.0
 - npm >= 8.0.0
-- MySQL >= 5.7
+- MariaDB >= 10.5
 
 ### 安装与运行
 
@@ -56,21 +56,18 @@ edu-system/
 git clone https://github.com/HensonLou94/edu-system.git
 cd edu-system
 
-# 2. 创建MySQL数据库
-mysql -u root -p
-CREATE DATABASE edu_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-exit
-
-# 3. 配置环境变量
+# 2. 配置环境变量
 cd backend
 cp .env.example .env
-# 编辑 .env 文件，填写数据库密码
+# 编辑 .env 文件：
+# - DB_TYPE=sqlite （本地测试，无需数据库）
+# - DB_TYPE=mariadb （生产环境，需要MariaDB）
 
-# 4. 启动后端
+# 3. 启动后端
 npm install
 node server.js
 
-# 5. 启动前端（新终端）
+# 4. 启动前端（新终端）
 cd ../frontend
 npm install
 npm start
@@ -83,80 +80,92 @@ npm start
 
 ## 📦 部署
 
-### 云服务器部署（Ubuntu 22.04）
+### 云服务器部署（Debian 12）
 
 ```bash
 # 1. 更新系统并安装 Node.js
-sudo apt update && sudo apt upgrade -y
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
+apt update && apt upgrade -y
+curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+apt install -y nodejs
 
-# 2. 安装 MySQL
-sudo apt install -y mysql-server
-sudo systemctl start mysql
-sudo systemctl enable mysql
+# 2. 安装 MariaDB
+apt install -y mariadb-server
+systemctl start mariadb
+systemctl enable mariadb
 
-# 3. 配置 MySQL
-sudo mysql -u root -e "
+# 3. 安全配置 MariaDB
+mysql_secure_installation
+# 按提示设置root密码
+
+# 4. 配置数据库
+mysql -u root -p
 CREATE DATABASE edu_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'edu_user'@'localhost' IDENTIFIED BY 'your_password';
 GRANT ALL PRIVILEGES ON edu_system.* TO 'edu_user'@'localhost';
 FLUSH PRIVILEGES;
-"
+EXIT;
 
-# 4. 安装 PM2
-sudo npm install -g pm2
+# 5. 安装 Git、Nginx、PM2
+apt install -y git nginx
+systemctl start nginx
+systemctl enable nginx
+npm install -g pm2
 
-# 5. 克隆项目
+# 6. 克隆项目
 cd /opt
-sudo git clone https://github.com/HensonLou94/edu-system.git
+git clone https://github.com/HensonLou94/edu-system.git
 cd edu-system
 
-# 6. 配置环境变量
+# 7. 配置环境变量
 cd backend
-sudo cp .env.example .env
-sudo vim .env  # 填写数据库信息
+cp .env.example .env
+vim .env
+# 设置 DB_TYPE=mariadb
+# 设置 DB_HOST=localhost
+# 设置 DB_USER=edu_user
+# 设置 DB_PASSWORD=your_password
+# 设置 DB_NAME=edu_system
 
-# 7. 安装依赖并启动
-sudo npm install
-sudo pm2 start server.js --name edu-api
-sudo pm2 save && sudo pm2 startup
+# 8. 安装依赖并启动
+npm install
+pm2 start server.js --name edu-api
+pm2 save
+pm2 startup
 
-# 8. 构建前端
+# 9. 构建前端
 cd ../frontend
-sudo npm install && sudo npm run build
+npm install && npm run build
 
-# 9. 安装并配置 Nginx
-sudo apt install -y nginx
-sudo vim /etc/nginx/sites-available/edu
-sudo ln -s /etc/nginx/sites-available/edu /etc/nginx/sites-enabled/
-sudo rm /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl restart nginx
+# 10. 配置 Nginx
+vim /etc/nginx/sites-available/edu
+ln -s /etc/nginx/sites-available/edu /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+nginx -t && systemctl restart nginx
 
-# 10. 开放防火墙
-sudo ufw allow 'Nginx Full'
-sudo ufw allow 22
-sudo ufw enable
+# 11. 开放防火墙
+apt install -y ufw
+ufw allow 22
+ufw allow 'Nginx Full'
+ufw enable
 ```
 
-### Nginx 配置示例
+### Nginx 配置示例（/etc/nginx/sites-available/edu）
 
 ```nginx
 server {
     listen 80;
-    server_name your-domain.com;
+    server_name _;
 
-    # 前端静态文件
     location / {
-        root /path/to/edu-system/frontend/build;
+        root /opt/edu-system/frontend/build;
         try_files $uri $uri/ /index.html;
     }
 
-    # 后端 API 代理
     location /api {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
 ```

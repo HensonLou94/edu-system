@@ -57,8 +57,8 @@ router.post('/', auth, async (req, res) => {
     for (const record of records) {
       await insert(
         `INSERT INTO attendance (schedule_id, student_id, class_date, check_in_time, status, notes) 
-         VALUES (?, ?, ?, NOW(), ?, ?)
-         ON DUPLICATE KEY UPDATE status = VALUES(status), check_in_time = NOW(), notes = VALUES(notes)`,
+         VALUES (?, ?, ?, datetime('now'), ?, ?)
+         ON CONFLICT(schedule_id, student_id, class_date) DO UPDATE SET status = excluded.status, check_in_time = datetime('now'), notes = excluded.notes`,
         [schedule_id, record.student_id, class_date, record.status || 'present', record.notes || null]
       );
     }
@@ -69,8 +69,8 @@ router.post('/', auth, async (req, res) => {
         for (const record of records) {
           if (record.status === 'present' || record.status === 'late') {
             await update(
-              'UPDATE enrollments SET used_hours = used_hours + 1 WHERE student_id = ? AND course_id = ? AND status = "active"',
-              [record.student_id, schedule.course_id]
+              'UPDATE enrollments SET used_hours = used_hours + 1 WHERE student_id = ? AND course_id = ? AND status = ?',
+              [record.student_id, schedule.course_id, 'active']
             );
           }
         }
