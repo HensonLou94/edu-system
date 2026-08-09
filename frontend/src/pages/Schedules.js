@@ -1,233 +1,203 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || '';
-const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-const TIME_SLOTS = [
-  '08:00-09:00', '09:00-10:00', '10:00-11:00', '11:00-12:00',
-  '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00',
-  '17:00-18:00', '18:00-19:00', '19:00-20:00', '20:00-21:00',
-];
-
-const styles = {
-  container: { maxWidth: 1200, margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 },
-  title: { fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 },
-  btn: { padding: '8px 18px', background: '#4F46E5', color: '#FFF', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 500 },
-  weekGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 12 },
-  dayColumn: { minWidth: 0 },
-  dayHeader: { textAlign: 'center', padding: '10px 0', background: '#4F46E5', color: '#FFF', borderRadius: '8px 8px 0 0', fontSize: 14, fontWeight: 600 },
-  dayItems: { background: '#FFF', borderRadius: '0 0 8px 8px', minHeight: 120, padding: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
-  scheduleItem: { padding: '8px 10px', borderRadius: 6, marginBottom: 6, fontSize: 12, borderLeft: '3px solid', background: '#F9FAFB' },
-  conflict: { background: '#FEF2F2', borderLeftColor: '#EF4444 !important', color: '#DC2626' },
-  modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  modalContent: { background: '#FFF', borderRadius: 12, padding: 28, width: '90%', maxWidth: 500, maxHeight: '85vh', overflowY: 'auto' },
-  modalTitle: { fontSize: 18, fontWeight: 600, marginBottom: 20, color: '#111827' },
-  formGroup: { marginBottom: 16 },
-  label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 4 },
-  select: { width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#FFF' },
-  input: { width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, outline: 'none', boxSizing: 'border-box' },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 },
-  cancelBtn: { padding: '8px 18px', border: '1px solid #D1D5DB', borderRadius: 8, background: '#FFF', color: '#374151', cursor: 'pointer', fontSize: 13 },
-  saveBtn: { padding: '8px 18px', background: '#4F46E5', color: '#FFF', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 },
-  loading: { textAlign: 'center', padding: 60, color: '#6B7280' },
-  error: { background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '12px 16px', color: '#DC2626', fontSize: 13, marginBottom: 16 },
-  conflictWarn: { background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 14px', color: '#92400E', fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 },
-  empty: { textAlign: 'center', padding: 20, color: '#9CA3AF', fontSize: 12 },
-  actionBtn: (color) => ({
-    padding: '3px 8px', border: `1px solid ${color}`, borderRadius: 4, background: 'transparent',
-    color, cursor: 'pointer', fontSize: 11,
-  }),
-};
-
-const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const DAYS = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 export default function Schedules() {
   const [schedules, setSchedules] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
   const [courses, setCourses] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [conflict, setConflict] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ courseId: '', teacherId: '', weekday: '1', timeSlot: '', classroom: '' });
-  const [saving, setSaving] = useState(false);
+  const limit = 15;
 
-  const token = localStorage.getItem('edu_token');
-  const headers = { Authorization: `Bearer ${token}` };
-
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(() => {
     setLoading(true);
-    setError('');
-    try {
-      const [schRes, courRes, teaRes] = await Promise.all([
-        axios.get(`${API_URL}/api/schedules`, { headers }),
-        axios.get(`${API_URL}/api/courses`, { headers, params: { limit: 100 } }),
-        axios.get(`${API_URL}/api/teachers`, { headers, params: { limit: 100 } }),
-      ]);
-      setSchedules(schRes.data.data || schRes.data.schedules || schRes.data || []);
-      setCourses(courRes.data.data || courRes.data.courses || []);
-      setTeachers(teaRes.data.data || teaRes.data.teachers || []);
-    } catch (err) {
-      setError(err.response?.data?.message || '加载失败');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    Promise.all([
+      axios.get('/api/schedules', { headers: headers(), params: { page, limit } }),
+      axios.get('/api/courses/all', { headers: headers() }),
+      axios.get('/api/teachers/all', { headers: headers() }),
+    ]).then(([sRes, cRes, tRes]) => {
+      setSchedules(sRes.data.schedules); setTotal(sRes.data.total);
+      setCourses(cRes.data); setTeachers(tRes.data);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [page]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const checkConflict = (weekday, timeSlot, excludeId) => {
-    return schedules.find(s =>
-      s.weekday === weekday && s.timeSlot === timeSlot && (s.id || s._id) !== excludeId
-    );
+  const openAdd = () => {
+    setForm({ course_id: '', teacher_id: '', classroom: '', day_of_week: 1, start_time: '09:00', end_time: '10:30', max_students: 30 });
+    setErrors({}); setModal('add');
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!form.course_id) e.course_id = '请选择课程';
+    if (!form.teacher_id) e.teacher_id = '请选择教师';
+    if (!form.day_of_week) e.day_of_week = '请选择星期';
+    if (!form.start_time) e.start_time = '必填';
+    if (!form.end_time) e.end_time = '必填';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSave = async () => {
-    if (!form.courseId || !form.teacherId || !form.timeSlot) {
-      alert('请填写完整信息');
-      return;
-    }
-    const conflicting = checkConflict(form.weekday, form.timeSlot, null);
-    if (conflicting) {
-      setConflict(`时间冲突：该时段已有排课「${conflicting.course_name || '课程'}」（${conflicting.teacher_name || '教师'}）`);
-      return;
-    }
-    setConflict('');
+    if (!validate()) return;
     setSaving(true);
     try {
-      await axios.post(`${API_URL}/api/schedules`, form, { headers });
-      setShowModal(false);
-      setForm({ courseId: '', teacherId: '', weekday: '1', timeSlot: '', classroom: '' });
+      if (modal === 'add') {
+        await axios.post('/api/schedules', form, { headers: headers() });
+      } else {
+        await axios.put(`/api/schedules/${modal.id}`, { ...form, status: form.status || 'active' }, { headers: headers() });
+      }
+      setModal(null);
       fetchAll();
     } catch (err) {
-      if (err.response?.data?.message?.includes('冲突')) {
-        setConflict(err.response.data.message);
-      } else {
-        alert(err.response?.data?.message || '保存失败');
-      }
+      setErrors({ _submit: err.response?.data?.error || '操作失败' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (item) => {
-    if (!confirm('确认删除此排课？')) return;
-    try {
-      await axios.delete(`${API_URL}/api/schedules/${item.id || item._id}`, { headers });
-      fetchAll();
-    } catch (err) {
-      alert(err.response?.data?.message || '删除失败');
-    }
+  const handleDelete = async (id) => {
+    if (!window.confirm('确认删除该排课？')) return;
+    try { await axios.delete(`/api/schedules/${id}`, { headers: headers() }); fetchAll(); }
+    catch (err) { alert(err.response?.data?.error || '删除失败'); }
   };
 
-  // Group by weekday
-  const grouped = {};
-  WEEKDAYS.forEach((_, i) => { grouped[i + 1] = []; });
-  schedules.forEach((s) => {
-    const day = s.weekday || 1;
-    if (!grouped[day]) grouped[day] = [];
-    grouped[day].push(s);
-  });
+  const totalPages = Math.ceil(total / limit);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>排课管理</h2>
-        <button style={styles.btn} onClick={() => { setConflict(''); setShowModal(true); }}>+ 新增排课</button>
+    <div className="page-container fade-in">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">排课管理</h1>
+          <p className="page-subtitle">共 {total} 条排课</p>
+        </div>
+        <button className="btn btn-primary btn-lg" onClick={openAdd}>＋ 新增排课</button>
       </div>
 
-      {error && <div style={styles.error}>{error}</div>}
-
-      {loading ? (
-        <div style={styles.loading}>⏳ 加载中...</div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <div style={{ ...styles.weekGrid, minWidth: 700 }}>
-            {WEEKDAYS.map((day, idx) => {
-              const dayNum = idx + 1;
-              return (
-                <div key={dayNum} style={styles.dayColumn}>
-                  <div style={styles.dayHeader}>{day}</div>
-                  <div style={styles.dayItems}>
-                    {grouped[dayNum].length === 0 ? (
-                      <div style={styles.empty}>暂无</div>
-                    ) : (
-                      grouped[dayNum].map((s, i) => (
-                        <div
-                          key={s.id || s._id}
-                          style={{
-                            ...styles.scheduleItem,
-                            borderLeftColor: colors[i % colors.length],
-                          }}
-                        >
-                          <div style={{ fontWeight: 600, marginBottom: 2 }}>{s.course_name || '课程'}</div>
-                          <div style={{ color: '#6B7280' }}>{s.teacher_name || '教师'}</div>
-                          <div style={{ color: '#6B7280' }}>{s.timeSlot || ''}</div>
-                          {s.classroom && <div style={{ color: '#9CA3AF' }}>📍 {s.classroom}</div>}
-                          <button
-                            style={{ ...styles.actionBtn('#EF4444'), marginTop: 4 }}
-                            onClick={() => handleDelete(s)}
-                          >
-                            删除
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      <div className="card">
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>课程</th>
+                <th>科目</th>
+                <th>教师</th>
+                <th>教室</th>
+                <th>星期</th>
+                <th>时间</th>
+                <th>人数上限</th>
+                <th>状态</th>
+                <th style={{ textAlign: 'right' }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i}>{[...Array(9)].map((_, j) => <td key={j}><div className="skeleton" style={{ height: 16, width: '80%' }} /></td>)}</tr>
+                ))
+              ) : schedules.length === 0 ? (
+                <tr><td colSpan={9}><div className="empty-state"><div className="icon">📅</div><div className="text">暂无排课</div></div></td></tr>
+              ) : (
+                schedules.map(s => (
+                  <tr key={s.id}>
+                    <td style={{ fontWeight: 500 }}>{s.course_name}</td>
+                    <td><span className="badge badge-primary">{s.subject || '-'}</span></td>
+                    <td>{s.teacher_name}</td>
+                    <td>{s.classroom || '-'}</td>
+                    <td><span className="badge badge-warning">{s.day_name || DAYS[s.day_of_week]}</span></td>
+                    <td>{s.start_time} - {s.end_time}</td>
+                    <td>{s.max_students || 30}</td>
+                    <td><span className={`badge ${s.status === 'active' ? 'badge-success' : 'badge-gray'}`}>{s.status === 'active' ? '正常' : '已停'}</span></td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ ...s }); setErrors({}); setModal(s); }}>编辑</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s.id)}>删除</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
-
-      {showModal && (
-        <div style={styles.modal} onClick={() => setShowModal(false)}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>新增排课</h3>
-
-            {conflict && <div style={styles.conflictWarn}>⚠️ {conflict}</div>}
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>课程 *</label>
-              <select style={styles.select} value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>
-                <option value="">请选择课程</option>
-                {courses.map((c) => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
-              </select>
+        {totalPages > 1 && (
+          <div className="pagination" style={{ padding: '12px 16px' }}>
+            <span className="pagination-info">第 {page}/{totalPages} 页</span>
+            <div className="pagination-buttons">
+              <button className="page-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>上一页</button>
+              <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>下一页</button>
             </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>教师 *</label>
-              <select style={styles.select} value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })}>
-                <option value="">请选择教师</option>
-                {teachers.map((t) => <option key={t.id || t._id} value={t.id || t._id}>{t.name}</option>)}
-              </select>
+          </div>
+        )}
+      </div>
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{modal === 'add' ? '新增排课' : '编辑排课'}</span>
+              <button className="modal-close" onClick={() => setModal(null)}>✕</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>星期 *</label>
-                <select style={styles.select} value={form.weekday} onChange={(e) => setForm({ ...form, weekday: e.target.value })}>
-                  {WEEKDAYS.map((d, i) => <option key={i} value={i + 1}>{d}</option>)}
-                </select>
+            <div className="modal-body">
+              {errors._submit && <div className="alert alert-error">⚠️ {errors._submit}</div>}
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">课程 *</label>
+                  <select className={`form-select ${errors.course_id ? 'error' : ''}`} value={form.course_id || ''} onChange={e => setForm({...form, course_id: e.target.value})}>
+                    <option value="">请选择课程</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.name} ({c.subject})</option>)}
+                  </select>
+                  {errors.course_id && <div className="form-error">{errors.course_id}</div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">教师 *</label>
+                  <select className={`form-select ${errors.teacher_id ? 'error' : ''}`} value={form.teacher_id || ''} onChange={e => setForm({...form, teacher_id: e.target.value})}>
+                    <option value="">请选择教师</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.subjects || '-'})</option>)}
+                  </select>
+                  {errors.teacher_id && <div className="form-error">{errors.teacher_id}</div>}
+                </div>
               </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>时间段 *</label>
-                <select style={styles.select} value={form.timeSlot} onChange={(e) => setForm({ ...form, timeSlot: e.target.value })}>
-                  <option value="">请选择</option>
-                  {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">教室</label>
+                  <input className="form-input" value={form.classroom || ''} onChange={e => setForm({...form, classroom: e.target.value})} placeholder="如：A101" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">星期 *</label>
+                  <select className={`form-select ${errors.day_of_week ? 'error' : ''}`} value={form.day_of_week || ''} onChange={e => setForm({...form, day_of_week: parseInt(e.target.value)})}>
+                    {DAYS.slice(1).map((d, i) => <option key={i + 1} value={i + 1}>{d}</option>)}
+                  </select>
+                  {errors.day_of_week && <div className="form-error">{errors.day_of_week}</div>}
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">开始时间 *</label>
+                  <input type="time" className={`form-input ${errors.start_time ? 'error' : ''}`} value={form.start_time || ''} onChange={e => setForm({...form, start_time: e.target.value})} />
+                  {errors.start_time && <div className="form-error">{errors.start_time}</div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">结束时间 *</label>
+                  <input type="time" className={`form-input ${errors.end_time ? 'error' : ''}`} value={form.end_time || ''} onChange={e => setForm({...form, end_time: e.target.value})} />
+                  {errors.end_time && <div className="form-error">{errors.end_time}</div>}
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">人数上限</label>
+                <input type="number" className="form-input" value={form.max_students || 30} onChange={e => setForm({...form, max_students: parseInt(e.target.value) || 30})} />
               </div>
             </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>教室</label>
-              <input style={styles.input} placeholder="例如：A101" value={form.classroom} onChange={(e) => setForm({ ...form, classroom: e.target.value })} />
-            </div>
-
-            <div style={styles.modalActions}>
-              <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>取消</button>
-              <button style={{ ...styles.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
-                {saving ? '保存中...' : '保存'}
-              </button>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setModal(null)}>取消</button>
+              <button className="btn btn-primary" disabled={saving} onClick={handleSave}>{saving ? '保存中...' : '保存'}</button>
             </div>
           </div>
         </div>

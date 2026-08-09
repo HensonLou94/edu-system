@@ -14,7 +14,14 @@ import Reports from './pages/Reports';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div className="loading-spinner" />
+      </div>
+    );
+  }
   return user ? children : <Navigate to="/login" />;
 }
 

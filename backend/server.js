@@ -6,6 +6,11 @@ const { initDatabase } = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// 修复BigInt序列化问题
+BigInt.prototype.toJSON = function() {
+  return Number(this);
+};
+
 // 中间件
 app.use(cors());
 app.use(express.json());

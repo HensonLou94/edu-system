@@ -1,198 +1,186 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || '';
-
-const styles = {
-  container: { maxWidth: 1200, margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 },
-  title: { fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 },
-  btn: { padding: '8px 18px', background: '#4F46E5', color: '#FFF', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 500 },
-  card: { background: '#FFF', borderRadius: 12, padding: 20, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderLeft: '4px solid #4F46E5' },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-  cardTitle: { fontSize: 16, fontWeight: 600, color: '#111827', margin: 0 },
-  cardMeta: { fontSize: 12, color: '#6B7280', marginBottom: 8, display: 'flex', gap: 16, flexWrap: 'wrap' },
-  metaItem: { display: 'flex', alignItems: 'center', gap: 4 },
-  cardContent: { fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-wrap' },
-  deadline: (expired) => ({
-    padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-    background: expired ? '#FEF2F2' : '#ECFDF5',
-    color: expired ? '#DC2626' : '#059669',
-  }),
-  actionBtn: (color) => ({
-    padding: '4px 10px', border: `1px solid ${color}`, borderRadius: 6, background: 'transparent',
-    color, cursor: 'pointer', fontSize: 12, marginRight: 6,
-  }),
-  modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  modalContent: { background: '#FFF', borderRadius: 12, padding: 28, width: '90%', maxWidth: 500, maxHeight: '85vh', overflowY: 'auto' },
-  modalTitle: { fontSize: 18, fontWeight: 600, marginBottom: 20, color: '#111827' },
-  formGroup: { marginBottom: 16 },
-  label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 4 },
-  input: { width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, outline: 'none', boxSizing: 'border-box' },
-  textarea: { width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, outline: 'none', boxSizing: 'border-box', minHeight: 120, resize: 'vertical', fontFamily: 'inherit' },
-  select: { width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#FFF' },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 },
-  cancelBtn: { padding: '8px 18px', border: '1px solid #D1D5DB', borderRadius: 8, background: '#FFF', color: '#374151', cursor: 'pointer', fontSize: 13 },
-  saveBtn: { padding: '8px 18px', background: '#4F46E5', color: '#FFF', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 },
-  loading: { textAlign: 'center', padding: 60, color: '#6B7280' },
-  error: { background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '12px 16px', color: '#DC2626', fontSize: 13, marginBottom: 16 },
-  empty: { textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13 },
-  pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 20 },
-  pageBtn: (active) => ({
-    padding: '6px 12px', border: '1px solid', borderRadius: 6, cursor: 'pointer', fontSize: 13,
-    borderColor: active ? '#4F46E5' : '#D1D5DB',
-    background: active ? '#4F46E5' : '#FFF',
-    color: active ? '#FFF' : '#374151',
-  }),
-};
+const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
 export default function Homework() {
-  const [list, setList] = useState([]);
+  const [homework, setHomework] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({});
+  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ courseId: '', title: '', content: '', deadline: '' });
+  const [courses, setCourses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const limit = 15;
 
-  const token = localStorage.getItem('edu_token');
-  const headers = { Authorization: `Bearer ${token}` };
-
-  useEffect(() => {
-    const loadCourses = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/courses`, { headers, params: { limit: 100 } });
-        setCourses(res.data.data || res.data.courses || []);
-      } catch (e) { console.error(e); }
-    };
-    loadCourses();
-  }, []);
-
-  const fetchList = useCallback(async () => {
+  const fetchData = useCallback(() => {
     setLoading(true);
-    setError('');
-    try {
-      const res = await axios.get(`${API_URL}/api/homework`, { headers, params: { page, limit: 10 } });
-      setList(res.data.data || res.data.homework || []);
-      setTotal(res.data.total || res.data.pagination?.total || 0);
-    } catch (err) {
-      setError(err.response?.data?.message || '加载失败');
-    } finally {
-      setLoading(false);
-    }
+    axios.get('/api/homework', { headers: headers(), params: { page, limit } })
+      .then(res => { setHomework(res.data.homework); setTotal(res.data.total); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [page]);
 
-  useEffect(() => { fetchList(); }, [fetchList]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const openAdd = async () => {
+    setForm({ course_id: '', teacher_id: '', title: '', content: '', due_date: '' });
+    setErrors({});
+    try {
+      const [cRes, tRes] = await Promise.all([
+        axios.get('/api/courses/all', { headers: headers() }),
+        axios.get('/api/teachers/all', { headers: headers() }),
+      ]);
+      setCourses(cRes.data || []);
+      setTeachers(tRes.data || []);
+    } catch (e) {}
+    setModal(true);
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!form.course_id) e.course_id = '请选择课程';
+    if (!form.teacher_id) e.teacher_id = '请选择教师';
+    if (!form.title?.trim()) e.title = '必填';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const handleSave = async () => {
-    if (!form.courseId || !form.title) { alert('请选择课程并填写标题'); return; }
+    if (!validate()) return;
     setSaving(true);
     try {
-      await axios.post(`${API_URL}/api/homework`, form, { headers });
-      setShowModal(false);
-      setForm({ courseId: '', title: '', content: '', deadline: '' });
-      fetchList();
+      await axios.post('/api/homework', form, { headers: headers() });
+      setModal(false);
+      fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || '保存失败');
+      setErrors({ _submit: err.response?.data?.error || '操作失败' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (item) => {
-    if (!confirm('确认删除此作业？')) return;
-    try {
-      await axios.delete(`${API_URL}/api/homework/${item.id || item._id}`, { headers });
-      fetchList();
-    } catch (err) {
-      alert(err.response?.data?.message || '删除失败');
-    }
+  const handleDelete = async (id) => {
+    if (!window.confirm('确认删除该作业？')) return;
+    try { await axios.delete(`/api/homework/${id}`, { headers: headers() }); fetchData(); }
+    catch (err) { alert(err.response?.data?.error || '删除失败'); }
   };
 
-  const isExpired = (deadline) => {
-    if (!deadline) return false;
-    return new Date(deadline) < new Date();
-  };
-
-  const totalPages = Math.ceil(total / 10) || 1;
+  const totalPages = Math.ceil(total / limit);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>作业管理</h2>
-        <button style={styles.btn} onClick={() => setShowModal(true)}>+ 新增作业</button>
+    <div className="page-container fade-in">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">作业管理</h1>
+          <p className="page-subtitle">共 {total} 条作业</p>
+        </div>
+        <button className="btn btn-primary btn-lg" onClick={openAdd}>＋ 发布作业</button>
       </div>
 
-      {error && <div style={styles.error}>{error}</div>}
+      <div className="card">
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>标题</th>
+                <th>课程</th>
+                <th>科目</th>
+                <th>教师</th>
+                <th>截止日期</th>
+                <th>发布日期</th>
+                <th style={{ textAlign: 'right' }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i}>{[...Array(7)].map((_, j) => <td key={j}><div className="skeleton" style={{ height: 16, width: '80%' }} /></td>)}</tr>
+                ))
+              ) : homework.length === 0 ? (
+                <tr><td colSpan={7}><div className="empty-state"><div className="icon">📝</div><div className="text">暂无作业</div></div></td></tr>
+              ) : (
+                homework.map(h => (
+                  <tr key={h.id}>
+                    <td style={{ fontWeight: 500 }}>{h.title}</td>
+                    <td>{h.course_name}</td>
+                    <td><span className="badge badge-primary">{h.subject || '-'}</span></td>
+                    <td>{h.teacher_name}</td>
+                    <td>
+                      {h.due_date ? (
+                        <span className={`badge ${new Date(h.due_date) < new Date() ? 'badge-danger' : 'badge-warning'}`}>
+                          {h.due_date.slice(0, 10)}
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td style={{ fontSize: 12, color: 'var(--gray-400)' }}>{h.created_at?.slice(0, 10)}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(h.id)}>删除</button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="pagination" style={{ padding: '12px 16px' }}>
+            <span className="pagination-info">第 {page}/{totalPages} 页</span>
+            <div className="pagination-buttons">
+              <button className="page-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>上一页</button>
+              <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>下一页</button>
+            </div>
+          </div>
+        )}
+      </div>
 
-      {loading ? (
-        <div style={styles.loading}>⏳ 加载中...</div>
-      ) : list.length === 0 ? (
-        <div style={styles.empty}>暂无作业</div>
-      ) : (
-        <>
-          {list.map((hw) => (
-            <div key={hw.id || hw._id} style={styles.card}>
-              <div style={styles.cardHeader}>
-                <h3 style={styles.cardTitle}>{hw.title}</h3>
-                <div>
-                  <button style={styles.actionBtn('#EF4444')} onClick={() => handleDelete(hw)}>删除</button>
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">发布作业</span>
+              <button className="modal-close" onClick={() => setModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {errors._submit && <div className="alert alert-error">⚠️ {errors._submit}</div>}
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">课程 *</label>
+                  <select className={`form-select ${errors.course_id ? 'error' : ''}`} value={form.course_id || ''} onChange={e => setForm({...form, course_id: e.target.value})}>
+                    <option value="">请选择课程</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  {errors.course_id && <div className="form-error">{errors.course_id}</div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">教师 *</label>
+                  <select className={`form-select ${errors.teacher_id ? 'error' : ''}`} value={form.teacher_id || ''} onChange={e => setForm({...form, teacher_id: e.target.value})}>
+                    <option value="">请选择教师</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                  {errors.teacher_id && <div className="form-error">{errors.teacher_id}</div>}
                 </div>
               </div>
-              <div style={styles.cardMeta}>
-                <span style={styles.metaItem}>📚 {hw.course_name || '未指定课程'}</span>
-                <span style={styles.metaItem}>📅 {hw.createdAt ? new Date(hw.createdAt).toLocaleDateString('zh-CN') : '-'}</span>
-                {hw.deadline && (
-                  <span style={styles.deadline(isExpired(hw.deadline))}>
-                    截止: {new Date(hw.deadline).toLocaleDateString('zh-CN')}
-                    {isExpired(hw.deadline) ? ' (已过期)' : ''}
-                  </span>
-                )}
+              <div className="form-group">
+                <label className="form-label">标题 *</label>
+                <input className={`form-input ${errors.title ? 'error' : ''}`} value={form.title || ''} onChange={e => setForm({...form, title: e.target.value})} placeholder="作业标题" />
+                {errors.title && <div className="form-error">{errors.title}</div>}
               </div>
-              {hw.content && (
-                <div style={styles.cardContent}>{hw.content}</div>
-              )}
+              <div className="form-group">
+                <label className="form-label">作业内容</label>
+                <textarea className="form-textarea" style={{ minHeight: 120 }} value={form.content || ''} onChange={e => setForm({...form, content: e.target.value})} placeholder="详细描述作业要求..." />
+              </div>
+              <div className="form-group">
+                <label className="form-label">截止日期</label>
+                <input type="date" className="form-input" value={form.due_date || ''} onChange={e => setForm({...form, due_date: e.target.value})} />
+              </div>
             </div>
-          ))}
-
-          <div style={styles.pagination}>
-            <button style={styles.pageBtn(false)} disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</button>
-            <span style={{ fontSize: 13, color: '#6B7280' }}>第 {page} / {totalPages} 页</span>
-            <button style={styles.pageBtn(false)} disabled={page >= totalPages} onClick={() => setPage(page + 1)}>下一页</button>
-          </div>
-        </>
-      )}
-
-      {showModal && (
-        <div style={styles.modal} onClick={() => setShowModal(false)}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>新增作业</h3>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>课程 *</label>
-              <select style={styles.select} value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>
-                <option value="">请选择课程</option>
-                {courses.map((c) => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>作业标题 *</label>
-              <input style={styles.input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="例如：第三章课后练习" />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>作业内容</label>
-              <textarea style={styles.textarea} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="详细描述作业要求..." />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>截止日期</label>
-              <input style={styles.input} type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
-            </div>
-            <div style={styles.modalActions}>
-              <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>取消</button>
-              <button style={{ ...styles.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
-                {saving ? '保存中...' : '保存'}
-              </button>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setModal(false)}>取消</button>
+              <button className="btn btn-primary" disabled={saving} onClick={handleSave}>{saving ? '发布中...' : '发布作业'}</button>
             </div>
           </div>
         </div>

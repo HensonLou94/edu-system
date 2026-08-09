@@ -1,257 +1,237 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || '';
-
-const styles = {
-  container: { maxWidth: 1200, margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 },
-  title: { fontSize: 20, fontWeight: 700, color: '#111827', margin: 0 },
-  btn: { padding: '8px 18px', background: '#4F46E5', color: '#FFF', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 500 },
-  statsBar: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 },
-  statCard: { background: '#FFF', borderRadius: 10, padding: '16px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
-  statLabel: { fontSize: 12, color: '#6B7280', marginBottom: 4 },
-  statValue: { fontSize: 22, fontWeight: 700, color: '#111827' },
-  filterBar: { display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-end' },
-  filterGroup: { display: 'flex', flexDirection: 'column', gap: 4 },
-  filterLabel: { fontSize: 12, color: '#6B7280', fontWeight: 500 },
-  select: { padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, outline: 'none', background: '#FFF', minWidth: 140 },
-  dateInput: { padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, outline: 'none' },
-  table: { width: '100%', borderCollapse: 'collapse', background: '#FFF', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' },
-  th: { background: '#F9FAFB', padding: '12px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151', borderBottom: '2px solid #E5E7EB' },
-  td: { padding: '12px 14px', fontSize: 13, color: '#374151', borderBottom: '1px solid #F3F4F6' },
-  badge: (type) => ({
-    padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-    background: type === 'cash' ? '#ECFDF5' : type === 'wechat' ? '#EFF6FF' : type === 'alipay' ? '#EEF2FF' : '#F3F4F6',
-    color: type === 'cash' ? '#059669' : type === 'wechat' ? '#2563EB' : type === 'alipay' ? '#4F46E5' : '#374151',
-  }),
-  modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  modalContent: { background: '#FFF', borderRadius: 12, padding: 28, width: '90%', maxWidth: 500, maxHeight: '85vh', overflowY: 'auto' },
-  modalTitle: { fontSize: 18, fontWeight: 600, marginBottom: 20, color: '#111827' },
-  formGroup: { marginBottom: 16 },
-  label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 4 },
-  input: { width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: 6, fontSize: 13, outline: 'none', boxSizing: 'border-box' },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 },
-  cancelBtn: { padding: '8px 18px', border: '1px solid #D1D5DB', borderRadius: 8, background: '#FFF', color: '#374151', cursor: 'pointer', fontSize: 13 },
-  saveBtn: { padding: '8px 18px', background: '#4F46E5', color: '#FFF', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 },
-  loading: { textAlign: 'center', padding: 60, color: '#6B7280' },
-  error: { background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '12px 16px', color: '#DC2626', fontSize: 13, marginBottom: 16 },
-  empty: { textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13 },
-  pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 20 },
-  pageBtn: (active) => ({
-    padding: '6px 12px', border: '1px solid', borderRadius: 6, cursor: 'pointer', fontSize: 13,
-    borderColor: active ? '#4F46E5' : '#D1D5DB',
-    background: active ? '#4F46E5' : '#FFF',
-    color: active ? '#FFF' : '#374151',
-  }),
-};
-
-const payMethods = [
-  { value: 'cash', label: '现金' },
-  { value: 'wechat', label: '微信' },
-  { value: 'alipay', label: '支付宝' },
-  { value: 'bank', label: '银行转账' },
-];
-
-const methodLabels = { cash: '现金', wechat: '微信', alipay: '支付宝', bank: '银行转账' };
+const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const methodLabels = { cash: '现金', wechat: '微信', alipay: '支付宝' };
+const typeLabels = { tuition: '学费', material: '材料费', other: '其他', refund: '退款' };
+const statusLabels = { paid: '已收', pending: '待收', refunded: '已退' };
 
 export default function Payments() {
-  const [list, setList] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState(null);
   const [page, setPage] = useState(1);
-  const [filterCourse, setFilterCourse] = useState('');
-  const [filterMethod, setFilterMethod] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({});
+  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [students, setStudents] = useState([]);
   const [courses, setCourses] = useState([]);
-  const [form, setForm] = useState({ studentId: '', courseId: '', amount: '', method: 'wechat', remark: '', date: new Date().toISOString().split('T')[0] });
+  const limit = 15;
 
-  const token = localStorage.getItem('edu_token');
-  const headers = { Authorization: `Bearer ${token}` };
-
-  // Load students & courses for form
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [sRes, cRes] = await Promise.all([
-          axios.get(`${API_URL}/api/students`, { headers, params: { limit: 500 } }),
-          axios.get(`${API_URL}/api/courses`, { headers, params: { limit: 500 } }),
-        ]);
-        setStudents(sRes.data.data || sRes.data.students || []);
-        setCourses(cRes.data.data || cRes.data.courses || []);
-      } catch (e) { console.error(e); }
-    };
-    load();
-  }, []);
-
-  const fetchList = useCallback(async () => {
+  const fetchData = useCallback(() => {
     setLoading(true);
-    setError('');
-    try {
-      const params = { page, limit: 10 };
-      if (filterCourse) params.courseId = filterCourse;
-      if (filterMethod) params.method = filterMethod;
-      const res = await axios.get(`${API_URL}/api/payments`, { headers, params });
-      setList(res.data.data || res.data.payments || []);
-      setTotal(res.data.total || res.data.pagination?.total || 0);
-    } catch (err) {
-      setError(err.response?.data?.message || '加载失败');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, filterCourse, filterMethod]);
+    Promise.all([
+      axios.get('/api/payments', { headers: headers(), params: { page, limit } }),
+      axios.get('/api/payments/summary', { headers: headers() }),
+    ]).then(([pRes, sRes]) => {
+      setPayments(pRes.data.payments); setTotal(pRes.data.total);
+      setSummary(sRes.data);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [page]);
 
-  useEffect(() => { fetchList(); }, [fetchList]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const openAdd = async () => {
+    setForm({ student_id: '', course_id: '', amount: '', payment_method: 'cash', payment_type: 'tuition', payment_date: new Date().toISOString().slice(0, 10), notes: '' });
+    setErrors({});
+    try {
+      const [sRes, cRes] = await Promise.all([
+        axios.get('/api/students', { headers: headers(), params: { page: 1, limit: 1000 } }),
+        axios.get('/api/courses/all', { headers: headers() }),
+      ]);
+      setStudents(sRes.data.students || []);
+      setCourses(cRes.data || []);
+    } catch (e) {}
+    setModal(true);
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!form.student_id) e.student_id = '请选择学员';
+    if (!form.amount || parseFloat(form.amount) <= 0) e.amount = '请输入有效金额';
+    if (!form.payment_date) e.payment_date = '请选择日期';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const handleSave = async () => {
-    if (!form.studentId || !form.courseId || !form.amount) {
-      alert('请填写完整信息');
-      return;
-    }
+    if (!validate()) return;
     setSaving(true);
     try {
-      await axios.post(`${API_URL}/api/payments`, { ...form, amount: Number(form.amount) }, { headers });
-      setShowModal(false);
-      setForm({ studentId: '', courseId: '', amount: '', method: 'wechat', remark: '', date: new Date().toISOString().split('T')[0] });
-      fetchList();
+      await axios.post('/api/payments', { ...form, amount: parseFloat(form.amount) }, { headers: headers() });
+      setModal(false);
+      fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || '保存失败');
+      setErrors({ _submit: err.response?.data?.error || '操作失败' });
     } finally {
       setSaving(false);
     }
   };
 
-  const totalPages = Math.ceil(total / 10) || 1;
+  const totalPages = Math.ceil(total / limit);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>收费管理</h2>
-        <button style={styles.btn} onClick={() => setShowModal(true)}>+ 新增收费</button>
+    <div className="page-container fade-in">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">收费管理</h1>
+          <p className="page-subtitle">共 {total} 条记录</p>
+        </div>
+        <button className="btn btn-primary btn-lg" onClick={openAdd}>＋ 新增收费</button>
       </div>
 
-      <div style={styles.statsBar}>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>总收入</div>
-          <div style={styles.statValue}>¥{list.reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}</div>
-        </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>记录总数</div>
-          <div style={styles.statValue}>{total}</div>
-        </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>当前页记录</div>
-          <div style={styles.statValue}>{list.length}</div>
-        </div>
-      </div>
-
-      <div style={styles.filterBar}>
-        <div style={styles.filterGroup}>
-          <span style={styles.filterLabel}>课程筛选</span>
-          <select style={styles.select} value={filterCourse} onChange={(e) => { setFilterCourse(e.target.value); setPage(1); }}>
-            <option value="">全部课程</option>
-            {courses.map((c) => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
-          </select>
-        </div>
-        <div style={styles.filterGroup}>
-          <span style={styles.filterLabel}>支付方式</span>
-          <select style={styles.select} value={filterMethod} onChange={(e) => { setFilterMethod(e.target.value); setPage(1); }}>
-            <option value="">全部方式</option>
-            {payMethods.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {error && <div style={styles.error}>{error}</div>}
-
-      {loading ? (
-        <div style={styles.loading}>⏳ 加载中...</div>
-      ) : list.length === 0 ? (
-        <div style={styles.empty}>暂无收费记录</div>
-      ) : (
-        <>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>日期</th>
-                  <th style={styles.th}>学员</th>
-                  <th style={styles.th}>课程</th>
-                  <th style={styles.th}>金额</th>
-                  <th style={styles.th}>支付方式</th>
-                  <th style={styles.th}>备注</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((p) => (
-                  <tr key={p.id || p._id}>
-                    <td style={styles.td}>{p.date ? new Date(p.date).toLocaleDateString('zh-CN') : '-'}</td>
-                    <td style={styles.td}>{p.studentName || '-'}</td>
-                    <td style={styles.td}>{p.course_name || '-'}</td>
-                    <td style={{ ...styles.td, fontWeight: 600, color: '#059669' }}>¥{(p.amount || 0).toLocaleString()}</td>
-                    <td style={styles.td}>
-                      <span style={styles.badge(p.method)}>{methodLabels[p.method] || p.method}</span>
-                    </td>
-                    <td style={styles.td}>{p.remark || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Summary Cards */}
+      {summary && (
+        <div className="stats-grid" style={{ marginBottom: 16 }}>
+          <div className="stat-card">
+            <div className="icon" style={{ background: '#EFF6FF', color: '#3B82F6' }}>📊</div>
+            <div className="value">{summary.count || 0}</div>
+            <div className="label">收费笔数</div>
           </div>
-          <div style={styles.pagination}>
-            <button style={styles.pageBtn(false)} disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</button>
-            <span style={{ fontSize: 13, color: '#6B7280' }}>第 {page} / {totalPages} 页（共 {total} 条）</span>
-            <button style={styles.pageBtn(false)} disabled={page >= totalPages} onClick={() => setPage(page + 1)}>下一页</button>
+          <div className="stat-card">
+            <div className="icon" style={{ background: '#F0FDF4', color: '#10B981' }}>💰</div>
+            <div className="value">¥{(Number(summary.total_amount) || 0).toLocaleString()}</div>
+            <div className="label">总金额</div>
           </div>
-        </>
+          <div className="stat-card">
+            <div className="icon" style={{ background: '#FEF3C7', color: '#F59E0B' }}>💵</div>
+            <div className="value">¥{(Number(summary.cash_amount) || 0).toLocaleString()}</div>
+            <div className="label">现金</div>
+          </div>
+          <div className="stat-card">
+            <div className="icon" style={{ background: '#D1FAE5', color: '#059669' }}>📱</div>
+            <div className="value">¥{(Number(summary.wechat_amount) || 0).toLocaleString()}</div>
+            <div className="label">微信</div>
+          </div>
+          <div className="stat-card">
+            <div className="icon" style={{ background: '#EDE9FE', color: '#7C3AED' }}>💳</div>
+            <div className="value">¥{(Number(summary.alipay_amount) || 0).toLocaleString()}</div>
+            <div className="label">支付宝</div>
+          </div>
+        </div>
       )}
 
-      {showModal && (
-        <div style={styles.modal} onClick={() => setShowModal(false)}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>新增收费</h3>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>学员 *</label>
-              <select style={styles.select} value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })}>
-                <option value="">请选择学员</option>
-                {students.map((s) => <option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>)}
-              </select>
+      <div className="card">
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>收据号</th>
+                <th>学员</th>
+                <th>课程</th>
+                <th>金额</th>
+                <th>方式</th>
+                <th>类型</th>
+                <th>日期</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i}>{[...Array(8)].map((_, j) => <td key={j}><div className="skeleton" style={{ height: 16, width: '80%' }} /></td>)}</tr>
+                ))
+              ) : payments.length === 0 ? (
+                <tr><td colSpan={8}><div className="empty-state"><div className="icon">💰</div><div className="text">暂无收费记录</div></div></td></tr>
+              ) : (
+                payments.map(p => (
+                  <tr key={p.id}>
+                    <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{p.receipt_no}</td>
+                    <td style={{ fontWeight: 500 }}>{p.student_name || '-'}</td>
+                    <td>{p.course_name || '-'}</td>
+                    <td style={{ fontWeight: 600, color: p.amount < 0 ? 'var(--danger)' : 'var(--primary)' }}>
+                      {p.amount < 0 ? '-' : ''}¥{Math.abs(Number(p.amount) || 0).toLocaleString()}
+                    </td>
+                    <td><span className="badge badge-gray">{methodLabels[p.payment_method] || p.payment_method}</span></td>
+                    <td><span className="badge badge-primary">{typeLabels[p.payment_type] || p.payment_type}</span></td>
+                    <td>{p.payment_date?.slice(0, 10)}</td>
+                    <td>
+                      <span className={`badge ${p.status === 'paid' ? 'badge-success' : p.status === 'refunded' ? 'badge-danger' : 'badge-warning'}`}>
+                        {statusLabels[p.status] || p.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="pagination" style={{ padding: '12px 16px' }}>
+            <span className="pagination-info">第 {page}/{totalPages} 页</span>
+            <div className="pagination-buttons">
+              <button className="page-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>上一页</button>
+              <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>下一页</button>
             </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>课程 *</label>
-              <select style={styles.select} value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>
-                <option value="">请选择课程</option>
-                {courses.map((c) => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
-              </select>
+          </div>
+        )}
+      </div>
+
+      {/* Modal */}
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">新增收费</span>
+              <button className="modal-close" onClick={() => setModal(false)}>✕</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>金额（元） *</label>
-                <input style={styles.input} type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+            <div className="modal-body">
+              {errors._submit && <div className="alert alert-error">⚠️ {errors._submit}</div>}
+              <div className="form-group">
+                <label className="form-label">学员 *</label>
+                <select className={`form-select ${errors.student_id ? 'error' : ''}`} value={form.student_id || ''} onChange={e => setForm({...form, student_id: e.target.value})}>
+                  <option value="">请选择学员</option>
+                  {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.student_no})</option>)}
+                </select>
+                {errors.student_id && <div className="form-error">{errors.student_id}</div>}
               </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>支付方式</label>
-                <select style={styles.select} value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value })}>
-                  {payMethods.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              <div className="form-group">
+                <label className="form-label">课程</label>
+                <select className="form-select" value={form.course_id || ''} onChange={e => setForm({...form, course_id: e.target.value})}>
+                  <option value="">请选择课程（可选）</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">金额 *</label>
+                  <input type="number" className={`form-input ${errors.amount ? 'error' : ''}`} value={form.amount || ''} onChange={e => setForm({...form, amount: e.target.value})} step="0.01" />
+                  {errors.amount && <div className="form-error">{errors.amount}</div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">收费日期 *</label>
+                  <input type="date" className={`form-input ${errors.payment_date ? 'error' : ''}`} value={form.payment_date || ''} onChange={e => setForm({...form, payment_date: e.target.value})} />
+                  {errors.payment_date && <div className="form-error">{errors.payment_date}</div>}
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">收费方式</label>
+                  <select className="form-select" value={form.payment_method || 'cash'} onChange={e => setForm({...form, payment_method: e.target.value})}>
+                    <option value="cash">现金</option>
+                    <option value="wechat">微信</option>
+                    <option value="alipay">支付宝</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">收费类型</label>
+                  <select className="form-select" value={form.payment_type || 'tuition'} onChange={e => setForm({...form, payment_type: e.target.value})}>
+                    <option value="tuition">学费</option>
+                    <option value="material">材料费</option>
+                    <option value="other">其他</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">备注</label>
+                <textarea className="form-textarea" value={form.notes || ''} onChange={e => setForm({...form, notes: e.target.value})} />
+              </div>
             </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>日期</label>
-              <input style={styles.input} type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>备注</label>
-              <input style={styles.input} value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} />
-            </div>
-            <div style={styles.modalActions}>
-              <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>取消</button>
-              <button style={{ ...styles.saveBtn, opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
-                {saving ? '保存中...' : '保存'}
-              </button>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setModal(false)}>取消</button>
+              <button className="btn btn-primary" disabled={saving} onClick={handleSave}>{saving ? '保存中...' : '确认收费'}</button>
             </div>
           </div>
         </div>
