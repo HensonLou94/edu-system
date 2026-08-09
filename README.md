@@ -53,7 +53,7 @@ edu-system/
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/your-username/edu-system.git
+git clone https://github.com/HensonLou94/edu-system.git
 cd edu-system
 
 # 2. 创建MySQL数据库
@@ -107,7 +107,7 @@ exit
 sudo npm install -g pm2
 
 # 5. 克隆项目
-git clone https://github.com/your-username/edu-system.git
+git clone https://github.com/HensonLou94/edu-system.git
 cd edu-system
 
 # 6. 配置环境变量
@@ -174,5 +174,5 @@ MIT License
 
 ## 📧 联系方式
 
-- 项目主页：https://github.com/your-username/edu-system
-- Issues：https://github.com/your-username/edu-system/issues
+- 项目主页：https://github.com/HensonLou94/edu-system
+- Issues：https://github.com/HensonLou94/edu-system/issues
