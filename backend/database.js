@@ -1,3 +1,4 @@
+require('dotenv').config();
 const mariadb = require('mariadb');
 
 // 数据库连接配置
