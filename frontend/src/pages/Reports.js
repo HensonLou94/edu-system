@@ -180,7 +180,7 @@ export default function Reports() {
               <tbody>
                 {courseStats.map((c, i) => (
                   <tr key={i}>
-                    <td style={styles.td}>{c.name || c.courseName}</td>
+                    <td style={styles.td}>{c.name || c.course_name}</td>
                     <td style={styles.td}>{c.studentCount || 0}</td>
                     <td style={styles.td}>{c.scheduleCount || 0}</td>
                   </tr>
@@ -207,7 +207,7 @@ export default function Reports() {
               <tbody>
                 {teacherStats.map((t, i) => (
                   <tr key={i}>
-                    <td style={styles.td}>{t.name || t.teacherName}</td>
+                    <td style={styles.td}>{t.name || t.teacher_name}</td>
                     <td style={styles.td}>{t.hours || t.lessonCount || 0}</td>
                     <td style={styles.td}>{t.studentCount || 0}</td>
                   </tr>

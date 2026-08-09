@@ -44,7 +44,7 @@ const styles = {
   empty: { textAlign: 'center', padding: 40, color: '#9CA3AF', fontSize: 13 },
 };
 
-const emptyStudent = { name: '', gender: '男', grade: '', parentName: '', parentPhone: '', phone: '', status: 'active', notes: '' };
+const emptyStudent = { name: '', gender: 'male', grade: '', parent_name: '', parent_phone: '', phone: '', status: 'active', notes: '' };
 const grades = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三', '高一', '高二', '高三'];
 
 export default function Students() {
@@ -81,7 +81,7 @@ export default function Students() {
   useEffect(() => { fetchList(); }, [fetchList]);
 
   const handleSave = async () => {
-    if (!form.name || !form.parentName || !form.parentPhone) {
+    if (!form.name || !form.parent_name || !form.parent_phone) {
       alert('请填写必填字段');
       return;
     }
@@ -171,8 +171,8 @@ export default function Students() {
                     <td style={styles.td}>{s.name}</td>
                     <td style={styles.td}>{s.gender}</td>
                     <td style={styles.td}>{s.grade || '-'}</td>
-                    <td style={styles.td}>{s.parentName || '-'}</td>
-                    <td style={styles.td}>{s.parentPhone || '-'}</td>
+                    <td style={styles.td}>{s.parent_name || '-'}</td>
+                    <td style={styles.td}>{s.parent_phone || '-'}</td>
                     <td style={styles.td}>
                       <span style={styles.statusBadge(s.status === 'active')}>
                         {s.status === 'active' ? '在读' : '停课'}
@@ -225,11 +225,11 @@ export default function Students() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>家长姓名 *</label>
-                <input style={styles.input} value={form.parentName} onChange={(e) => setForm({ ...form, parentName: e.target.value })} />
+                <input style={styles.input} value={form.parent_name} onChange={(e) => setForm({ ...form, parent_name: e.target.value })} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.label}>家长电话 *</label>
-                <input style={styles.input} value={form.parentPhone} onChange={(e) => setForm({ ...form, parentPhone: e.target.value })} />
+                <input style={styles.input} value={form.parent_phone} onChange={(e) => setForm({ ...form, parent_phone: e.target.value })} />
               </div>
             </div>
             <div style={styles.formGroup}>

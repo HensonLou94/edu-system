@@ -190,7 +190,7 @@ export default function Payments() {
                   <tr key={p.id || p._id}>
                     <td style={styles.td}>{p.date ? new Date(p.date).toLocaleDateString('zh-CN') : '-'}</td>
                     <td style={styles.td}>{p.studentName || '-'}</td>
-                    <td style={styles.td}>{p.courseName || '-'}</td>
+                    <td style={styles.td}>{p.course_name || '-'}</td>
                     <td style={{ ...styles.td, fontWeight: 600, color: '#059669' }}>¥{(p.amount || 0).toLocaleString()}</td>
                     <td style={styles.td}>
                       <span style={styles.badge(p.method)}>{methodLabels[p.method] || p.method}</span>

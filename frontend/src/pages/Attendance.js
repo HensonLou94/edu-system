@@ -188,7 +188,7 @@ export default function Attendance() {
                       <td style={styles.td}>{idx + 1}</td>
                       <td style={styles.td}>{s.name}</td>
                       <td style={styles.td}>{s.grade || '-'}</td>
-                      <td style={styles.td}>{s.parentPhone || '-'}</td>
+                      <td style={styles.td}>{s.parent_phone || '-'}</td>
                       <td style={styles.td}>
                         <select
                           style={styles.statusSelect(currentStatus)}

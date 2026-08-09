@@ -90,7 +90,7 @@ export default function Schedules() {
     }
     const conflicting = checkConflict(form.weekday, form.timeSlot, null);
     if (conflicting) {
-      setConflict(`时间冲突：该时段已有排课「${conflicting.courseName || '课程'}」（${conflicting.teacherName || '教师'}）`);
+      setConflict(`时间冲突：该时段已有排课「${conflicting.course_name || '课程'}」（${conflicting.teacher_name || '教师'}）`);
       return;
     }
     setConflict('');
@@ -161,8 +161,8 @@ export default function Schedules() {
                             borderLeftColor: colors[i % colors.length],
                           }}
                         >
-                          <div style={{ fontWeight: 600, marginBottom: 2 }}>{s.courseName || '课程'}</div>
-                          <div style={{ color: '#6B7280' }}>{s.teacherName || '教师'}</div>
+                          <div style={{ fontWeight: 600, marginBottom: 2 }}>{s.course_name || '课程'}</div>
+                          <div style={{ color: '#6B7280' }}>{s.teacher_name || '教师'}</div>
                           <div style={{ color: '#6B7280' }}>{s.timeSlot || ''}</div>
                           {s.classroom && <div style={{ color: '#9CA3AF' }}>📍 {s.classroom}</div>}
                           <button

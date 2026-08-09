@@ -142,7 +142,7 @@ export default function Homework() {
                 </div>
               </div>
               <div style={styles.cardMeta}>
-                <span style={styles.metaItem}>📚 {hw.courseName || '未指定课程'}</span>
+                <span style={styles.metaItem}>📚 {hw.course_name || '未指定课程'}</span>
                 <span style={styles.metaItem}>📅 {hw.createdAt ? new Date(hw.createdAt).toLocaleDateString('zh-CN') : '-'}</span>
                 {hw.deadline && (
                   <span style={styles.deadline(isExpired(hw.deadline))}>
